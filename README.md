@@ -1,2 +1,3 @@
 # AdventOfCode
-My solutions for the "Advent of Code" challanges
+
+My solutions for the [Advent of Code](http://adventofcode.com/) challanges
