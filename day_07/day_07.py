@@ -2,67 +2,57 @@
 import sys
 import numpy as np
 
+# memoizing function
 def set_label_value(label, value):
-
     # guarrantee that it's an unsgned 16-bit
-    wire_values[label] = np.array([value], dtype="uint16")[0]
+    wire_values[label] = np.array([int(value)], dtype="uint16")[0]
 
 def get_label_value(label):
+
+    if label in wire_values.keys():
+        return wire_values[label]
+
+    # handle when a label is a number
+    try:
+        return np.array([int(label)], dtype="uint16")[0]
+    except ValueError:
+        pass
 
     # determine type of instruction
     instruction_parts = wire_graph[label]
     num_parts = len(instruction_parts)
 
+    # assignment instruction ("123 -> x" or "lx -> a")
     if num_parts == 1:
-        try:
-            # if it's a number it is fine
-            value = int(label)
-        except ValueError:
-            # if it's a label we have to check its value
-            if label in wire_values.keys():
-                value = wire_values[label]
-            else:
-                value = get_label_value(label)
+        value = get_label_value(instruction_parts[0])
 
-        # guarrantee that it's an unsgned 16-bit
-        return np.array([value], dtype="uint16")[0]
+    # negated assignment ("NOT y -> x")
+    elif num_parts == 2:
+        value = (~ get_label_value(instruction_parts[1]))
 
+    # two label operations (AND, OR, LSHIFT, RSHIFT)
     else:
+        left_source = instruction_parts[0]
+        operation = instruction_parts[1]
+        right_source = instruction_parts[2]
 
-        # assignment instruction (123 -> x)
-        if num_parts == 2:
-            value = get_label_value(instruction_parts[0])
-            target_label = instruction_parts[1]
+        left_value = get_label_value(left_source)
+        right_value = get_label_value(right_source)
 
-        # negated assignment (NOT y -> x)
-        elif num_parts == 3:
-            value = (~ get_label_value(instruction_parts[1]))
-            target_label = instruction_parts[2]
-
-        # two label operations (AND, OR, LSHIFT, RSHIFT)
+        if operation == "AND":
+            value = left_value & right_value
+        elif operation == "OR":
+            value = left_value | right_value
+        elif operation == "LSHIFT":
+            value = left_value << right_value
+        elif operation == "RSHIFT":
+            value = left_value >> right_value
         else:
-            left_source = instruction_parts[0]
-            operation = instruction_parts[1]
-            right_source = instruction_parts[2]
-            target_label = instruction_parts[3]
+            value = 0
+            print("This should not happen...")
 
-            left_value = get_label_value(left_source)
-            right_value = get_label_value(right_source)
-
-            if operation == "AND":
-                value = left_value & right_value
-            elif operation == "OR":
-                value = left_value | right_value
-            elif operation == "LSHIFT":
-                value = left_value << right_value
-            elif operation == "RSHIFT":
-                value = left_value >> right_value
-            else:
-                value = 0
-                print("This should not happen...")
-
-        print(value)
-        set_label_value(target_label, value)
+    set_label_value(label, value)
+    return value
 
 
 if __name__ == "__main__":
@@ -70,8 +60,8 @@ if __name__ == "__main__":
     input_file = open(sys.argv[1])
     input_lines = input_file.readlines()
 
-    wire_values = {}
-    wire_graph = {}
+    wire_values = {}  # memoizing variable
+    wire_graph = {}  # graph of conections
 
     for line in input_lines:
 
@@ -91,9 +81,7 @@ if __name__ == "__main__":
                 target_label = instruction_parts[1]
                 wire_values[target_label] = value
             except ValueError:
-                continue
+                pass
 
+    # recursive bottom-up search
     print(get_label_value("a"))
-
-    print(wire_values)
-    print(wire_graph)
