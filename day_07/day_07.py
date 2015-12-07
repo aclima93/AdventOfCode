@@ -1,58 +1,79 @@
 
 import sys
+import numpy as np
 
-input_file = open(sys.argv[1])
-input_lines = input_file.readlines()
+def get_label_value(label):
 
-wires = {}
+    # a label must wait to have a value before it is used
+    if label not in wires:
+        return -1
 
-for line in input_lines:
-    # split the instruciton
-    instruction = line.lstrip().rstrip()
-    instruction_parts = instruction.split(" ")
-    instruction_parts.remove("->")
+    try:
+        # if it's a number it is fine
+        value = int(label)
+    except ValueError:
+        # if it's a label we have to check its value
+        value = wires[label]
 
-    # determine type of instruction
-    num_parts = len(instruction_parts)
+    # guarrantee that it's an unsgned 16-bit
+    return np.array([value], dtype="uint16")[0]
 
-    # assignment instruction (123 -> x)
-    if num_parts == 2:
-        value = instruction_parts[0]
-        target_label = instruction_parts[1]
-        wires[target_label] = int(value)
+def set_label_value(label, value):
 
-    # negated assignment (NOT y -> x)
-    elif num_parts == 3:
-        source_label = instruction_parts[1]
-        target_label = instruction_parts[2]
-        value = wires[source_label]
-        wires[target_label] = (~ value)
+    # guarrantee that it's an unsgned 16-bit
+    wires[label] = np.array([value], dtype="uint16")[0]
 
-    # two label operations
-    else:
-        left_source = instruction_parts[0]
-        operation = instruction_parts[1]
-        right_source = instruction_parts[2]
-        target_label = instruction_parts[3]
+if __name__ == "__main__":
 
-        try:
-            left_value = int(left_source)
-        except ValueError:
-            left_value = wires[left_source]
+    input_file = open(sys.argv[1])
+    input_lines = input_file.readlines()
 
-        try:
-            right_value = int(right_source)
-        except ValueError:
-            right_value = wires[right_source]
+    wires = {}
 
-        if operation == "AND":
-            value = left_value & right_value
-        elif operation == "OR":
-            value = left_value | right_value
-        elif operation == "LSHIFT":
-            value = left_value << right_value
-        elif operation == "RSHIFT":
-            value = left_value >> right_value
+    for line in input_lines:
 
-print(wires)
-print(wires["a"])
+        # split the instruction
+        instruction = line.lstrip().rstrip()
+        instruction_parts = instruction.split(" ")
+        instruction_parts.remove("->")
+
+        # determine type of instruction
+        num_parts = len(instruction_parts)
+
+        # assignment instruction (123 -> x)
+        if num_parts == 2:
+            value = get_label_value(instruction_parts[0])
+            target_label = instruction_parts[1]
+
+        # negated assignment (NOT y -> x)
+        elif num_parts == 3:
+            value = (~ get_label_value(instruction_parts[1]))
+            target_label = instruction_parts[2]
+
+        # two label operations (AND, OR, LSHIFT, RSHIFT)
+        else:
+            left_source = instruction_parts[0]
+            operation = instruction_parts[1]
+            right_source = instruction_parts[2]
+            target_label = instruction_parts[3]
+
+            left_value = get_label_value(left_source)
+            right_value = get_label_value(right_source)
+
+            if operation == "AND":
+                value = left_value & right_value
+            elif operation == "OR":
+                value = left_value | right_value
+            elif operation == "LSHIFT":
+                value = left_value << right_value
+            elif operation == "RSHIFT":
+                value = left_value >> right_value
+            else:
+                value = 0
+                print("This should not happen...")
+
+        print(value)
+        set_label_value(target_label, value)
+
+    print(wires)
+    print(wires["a"])
