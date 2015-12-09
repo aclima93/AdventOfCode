@@ -1,26 +1,30 @@
 import sys
 
-def visit_connections(cur_node, trip_cost, best_total_cost):
+
+def visit_connections(cur_node, trip_cost):
+
+    global best_total_cost
 
     # we have visited every location
     if len(visited_locations) == num_locations:
+        print(visited_locations, trip_cost)
         if trip_cost < best_total_cost:
             best_total_cost = trip_cost
 
     else:
-        # don't revisit locations
-        if cur_node not in visited_locations:
+        for child_node, edge_cost in locations_graph[cur_node]:
 
-            # mark location as visited
-            visited_locations.append(cur_node)
+            # don't revisit locations
+            if child_node not in visited_locations:
 
-            for child_node, cost in locations_graph[cur_node]:
-                best_total_cost = visit_connections(child_node, trip_cost + cost, best_total_cost)
+                # mark location as visited
+                visited_locations.append(child_node)
 
-            # mark location as unvisited (cleanup)
-            visited_locations.remove(cur_node)
+                # propagate
+                visit_connections(child_node, trip_cost + edge_cost)
 
-    return best_total_cost
+                # mark location as unvisited (cleanup)
+                visited_locations.remove(child_node)
 
 if __name__ == "__main__":
 
@@ -40,7 +44,7 @@ if __name__ == "__main__":
         line = line.replace(" to ", ",").replace(" = ", ",")
         source, target, cost = line.split(",")
         cost = int(cost)
-        best_total_cost += cost # the initial best (worst) solution is to use every edge
+        best_total_cost += cost  # the initial best (worst) solution is to use every edge
 
         # add bidirectional connections to graph
         if source not in locations_graph.keys():
@@ -53,13 +57,13 @@ if __name__ == "__main__":
         else:
             locations_graph[target].append([source, cost])
 
-    num_locations = len(locations_graph.keys())
+    num_locations = len(locations_graph)
     
     # we can start at any location
     for start_node in locations_graph.keys():
-        best_solution_total_cost = visit_connections(start_node, 0, best_total_cost)
-        if best_solution_total_cost < best_total_cost:
-            best_total_cost = best_solution_total_cost
+        visited_locations.append(start_node)
+        visit_connections(start_node, 0)
+        visited_locations.remove(start_node)
 
     # just a classic TSP problem, or rather, Travelling Present Giving Santa (TPGS)
     print(best_total_cost)
